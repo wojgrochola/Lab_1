@@ -1,6 +1,6 @@
 #!/usr/bin/env python
  
-import sys, time, commands, logging
+import sys, time, commands, logging, optparse
 from daemon import Daemon
 
 
@@ -8,7 +8,8 @@ from daemon import Daemon
 
 
 class MyDaemon(Daemon):
-		def __init__(self, filePath):
+		def __init__(self, filePath, flag):
+			self.flag = flag
 			Daemon.__init__(self, filePath)
 			FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 			logging.basicConfig(filename='log.txt', level=logging.INFO, format=FORMAT)
@@ -18,56 +19,51 @@ class MyDaemon(Daemon):
 					self.execute()
 					time.sleep(30)
 
-		def usageInfo(self):
-			print "usage: %s start -flag" % sys.argv[0]
-			print ("Available flags:\n\t-p - log CPU usage\n\t-r \tlog RAM usage\n\t-pr  log CPU and RAM usage.\n")
-			sys.exit(2)
-
+	
 
 		def getCpu(self):
-			cpu = commands.getoutput("top -n 1 | grep Cpu")
-			return cpu
+			cpu = commands.getoutput('grep "cpu " /proc/stat')
+			cpu = cpu.split()
+			cpuUsage = str((int(cpu[1])+int(cpu[3]))*100/(int(cpu[1]) + int(cpu[3]) + int(cpu[4])))
+			return cpuUsage + "%"
 	
 		def getRam(self):
 			memTotal = float(commands.getoutput('cat /proc/meminfo | grep MemTotal').split()[1])
 			memFree =  float(commands.getoutput('cat /proc/meminfo | grep MemFree').split()[1])
 			memProc = float ((memFree/memTotal) * 100)
-			return str(round(memProc, 2)) + "%"
+			return "Ram usage: " + str(round(memProc, 2)) + "%"
 
 		def getDuo(self):
-			info = "\n\tRam usage: " + self.getRam() + "\n\t" + self.getCpu();
+			info = "Ram usage: " + self.getRam() + ", Cpu usage: " + self.getCpu();
 			return info
 
 		def execute(self):
 			info = ""
-			if (len(sys.argv) == 3):
-				flag = sys.argv[2]
-				if (flag == '-p'):
-					info = self.getCpu()
-				elif(flag == '-r'):
-					info = self.getRam()
-				elif(flag == '-pr'):
-					info = self.getDuo()
-				else:
-					print ("Unkown flag. Exit program.")
-					sys.exit(2)
-			else:
-				self.usageInfo()
+			if (self.flag == 'processor'):
+				info = self.getCpu()
+			elif(self.flag == 'memory'):
+				info = self.getRam()
+			elif(self.flag == 'all'):
+				info = self.getDuo()
+			
 			logging.info(info)
 			  
 	 
 if __name__ == "__main__":
-		daemon = MyDaemon('/tmp/systemLogger.pid')
-		if len(sys.argv) >= 2:
-				if 'start' == sys.argv[1]:
-						daemon.start()
-				elif 'stop' == sys.argv[1]:
-						daemon.stop()
-				elif 'restart' == sys.argv[1]:
-						daemon.restart()
-				else:
-						print "Unknown command. Use start|stop|restart "
-						sys.exit(2)
-				sys.exit(0)
-		else:
-				daemon.usageInfo()
+	parser = optparse.OptionParser("Usage: %s start | stop [options]")
+	parser.add_option("-c", "--check", dest="value", default="all", help="What wil be log: -c memory | -c processor | -c all")
+	(options, args) = parser.parse_args()
+	if len(args) != 1:
+		parser.error("Incorret number of arguments.")
+	print 
+	daemon = MyDaemon('/tmp/systemLogger.pid', options.value)
+	if 'start' == args[0]:
+		daemon.start()
+	elif 'stop' == args[0]:
+		daemon.stop()
+	elif 'restart' == sys[0]:
+		daemon.restart()
+	else:
+		parser.error("Unknown command. Use start|stop|restart ")
+		sys.exit(0)
+
