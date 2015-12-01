@@ -1,33 +1,45 @@
 import xml.etree.ElementTree as ET
 import unittest, sys
 
+class Info:
+    @staticmethod
+    def fileNotFound(path):
+        print ("File: " + path + " - not found!")
 
+    @staticmethod
+    def invalidFile(path):
+        print ("File: " + path + " - has an invalid construction.")
 
 class Parser:
 
-    def __init__(self, name):
-
-        self.name = name
+    def __init__(self, path):
+        self.path = path
         self.catalog = []
+ 
+    def __parseFile(self):
+        return ET.parse(self.path)
+    def __parseXml(self):
+        tree = self.__parseFile()
+        data = self.__getDataFromXml(tree)
+        self.catalog = data
 
-    def parseXml(self):
-        try:
-            self.tree = ET.parse(self.name)
-        except:
-            print (sys.exc_info()[0])
-            sys.exit(0)
-
-    def run(self):
-        self.parseXml()
-        root = self.tree.getroot()
-
+    def __getDataFromXml(self, tree):
+        root = tree.getroot()
+        catalog = []
         for child in root:
             childElements = []
             for innerChild in child:
                 childElements.append(innerChild.text)
-            self.catalog.append(childElements)
+            catalog.append(childElements)
+        return catalog
 
-        return self.catalog
+    def run(self):
+        try:
+            self.__parseXml()
+        except IOError:
+            Info.fileNotFound(self.path)
+        except ET.ParseError:
+            Info.invalidFile(self.path)    
 
     def __repr__(self):
         out = ''
@@ -40,7 +52,7 @@ class Parser:
         return out
 
 if __name__ == '__main__':
-    p = Parser('Books.xml')
+    p = Parser('xml_files/Books.xml')
     p.run()
-    print (p)
+    print(p)
 
