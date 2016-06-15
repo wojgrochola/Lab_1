@@ -1,5 +1,5 @@
 #!/usr/bin/env python
- 
+#tgmptmp zmiany 
 import sys, time, commands, logging, optparse
 from daemon import Daemon
 
